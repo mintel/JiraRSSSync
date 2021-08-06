@@ -1,0 +1,23 @@
+interval: 300
+feeds:
+  - id: bbc_world
+    feed_url: http://feeds.bbci.co.uk/news/england/rss.xml
+    name: BBC World
+    jira_project_id: CPTT
+    labels:
+      - BBC
+  - id: gke_release_notes
+    feed_url: https://cloud.google.com/feeds/kubernetes-engine-release-notes.xml
+    name: GKE release notes
+    jira_project_id: CPTT
+    added_since: "2019-03-27T15:00:00Z"
+    labels:
+      - GKEReleaseNotes
+  - id: gke_security_updates
+    feed_url: https://cloud.google.com/feeds/kubernetes-engine-security-bulletins.xml
+    name: GKE Security Updates
+    jira_project_id: CPTT
+    added_since: "2019-03-27T15:00:00Z"
+    labels:
+      - GKESecurityUpdates
+      - Needs/Triage
