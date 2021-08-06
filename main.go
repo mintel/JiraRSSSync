@@ -185,6 +185,7 @@ func readConfig(path string) *Config {
 func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Client, config *Config) {
 	gaugeOpts := prometheus.GaugeOpts{
 		Name: "last_run_time",
+		Subsystem: "jira_rss_sync",
 		Help: "Last Run Time in Unix Seconds",
 	}
 	lastRunGauge = prometheus.NewGauge(gaugeOpts)
@@ -192,6 +193,7 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 
 	issuesCreatedCounterOpts := prometheus.CounterOpts{
 		Name: "issue_creation_total",
+		Subsystem: "jira_rss_sync",
 		Help: "The total number of issues created in Jira since start-up",
 	}
 	issuesCreatedCounter = prometheus.NewCounter(issuesCreatedCounterOpts)
@@ -199,6 +201,7 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 
 	issueCreationErrorCountOpts := prometheus.CounterOpts{
 		Name: "issue_creation_error_total",
+		Subsystem: "jira_rss_sync",
 		Help: "The total of failures in creating Jira issues since start-up",
 	}
 
