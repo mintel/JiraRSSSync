@@ -3,26 +3,30 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"path"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/andygrunwald/go-jira"
 	"github.com/go-redis/redis"
 	"github.com/mmcdole/gofeed"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"jaytaylor.com/html2text"
-	"log"
-	"net/http"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 var addr = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-var lastRunGauge prometheus.Gauge
-var issuesCreatedCounter prometheus.Counter
-var issueCreationErrorCounter prometheus.Counter
+var (
+	lastRunGauge              prometheus.Gauge
+	issuesCreatedCounter      prometheus.Counter
+	issueCreationErrorCounter prometheus.Counter
+)
 
 type Config struct {
 	Feeds    []Feed
@@ -49,7 +53,6 @@ type EnvValues struct {
 }
 
 func hasExistingJiraIssue(itemTitle string, projectKey string, jiraClient *jira.Client) bool {
-	retVal := false
 	// Escape quotes in the title so its parsed correctly by Jira's JQL parser
 	itemTitle = strings.ReplaceAll(itemTitle, `"`, `\"`)
 	// Wrap the itemTitle in "\ \" so Jira does a direct match.
@@ -63,17 +66,14 @@ func hasExistingJiraIssue(itemTitle string, projectKey string, jiraClient *jira.
 	}
 
 	if len(issues) == 0 {
-		retVal = false
+		return false
 	} else if len(issues) > 1 {
-		retVal = true
 		log.Printf("Found multiple issues that match \"%s\":", itemTitle)
 		for _, x := range issues {
 			log.Printf("%s ", x.Key)
 		}
-	} else {
-		retVal = true
 	}
-	return retVal
+	return true
 }
 
 func (feed Feed) checkFeed(redisClient *redis.Client, jiraClient *jira.Client) {
@@ -184,25 +184,25 @@ func readConfig(path string) *Config {
 
 func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Client, config *Config) {
 	gaugeOpts := prometheus.GaugeOpts{
-		Name: "last_run_time",
+		Name:      "last_run_time",
 		Subsystem: "jira_rss_sync",
-		Help: "Last Run Time in Unix Seconds",
+		Help:      "Last Run Time in Unix Seconds",
 	}
 	lastRunGauge = prometheus.NewGauge(gaugeOpts)
 	prometheus.MustRegister(lastRunGauge)
 
 	issuesCreatedCounterOpts := prometheus.CounterOpts{
-		Name: "issue_creation_total",
+		Name:      "issue_creation_total",
 		Subsystem: "jira_rss_sync",
-		Help: "The total number of issues created in Jira since start-up",
+		Help:      "The total number of issues created in Jira since start-up",
 	}
 	issuesCreatedCounter = prometheus.NewCounter(issuesCreatedCounterOpts)
 	prometheus.MustRegister(issuesCreatedCounter)
 
 	issueCreationErrorCountOpts := prometheus.CounterOpts{
-		Name: "issue_creation_error_total",
+		Name:      "issue_creation_error_total",
 		Subsystem: "jira_rss_sync",
-		Help: "The total of failures in creating Jira issues since start-up",
+		Help:      "The total of failures in creating Jira issues since start-up",
 	}
 
 	issueCreationErrorCounter = prometheus.NewCounter(issueCreationErrorCountOpts)
@@ -236,7 +236,7 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 	}
 
 	if err := redisClient.Ping().Err(); err != nil {
-		panic(fmt.Sprintf("Unable to connect to Redis @ %s", env.RedisURL))
+		log.Panicf("Unable to connect to Redis @ %s", env.RedisURL)
 	} else {
 		log.Printf("Connected to Redis @ %s", env.RedisURL)
 	}
@@ -247,8 +247,11 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 func main() {
 	env := readEnv()
 	redisClient, jiraClient, config := initialise(env)
-	go checkLiveliness(redisClient)
+	go handleHTTP(redisClient)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			log.Printf("Running checks at %s\n", time.Now().Format(time.RFC850))
 			for _, configEntry := range config.Feeds {
@@ -259,8 +262,7 @@ func main() {
 		}
 	}()
 
-	http.Handle("/metrics", promhttp.Handler())
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	wg.Wait()
 }
 
 func readEnv() EnvValues {
@@ -317,7 +319,7 @@ func readEnv() EnvValues {
 	}
 }
 
-func checkLiveliness(client *redis.Client) {
+func handleHTTP(client *redis.Client) {
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := client.Ping().Err(); err != nil {
 			http.Error(w, "Unable to connect to the redis master", http.StatusInternalServerError)
@@ -326,9 +328,6 @@ func checkLiveliness(client *redis.Client) {
 		}
 	})
 
-	err := http.ListenAndServe(":8081", nil)
-	if err != nil {
-		log.Printf("Unable to start /healthz webserver")
-	}
-
+	http.Handle("/metrics", promhttp.Handler())
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
