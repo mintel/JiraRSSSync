@@ -82,7 +82,7 @@ Two metrics (above and beyond what are exposed by the Go Prometheus library) are
 * issue_creation_error_total - The total number of failures of issue creation in Jira.
 
 ## Healthz Endpoint
-A /healthz endpoint is exposed on :8081/healthz which will fail if it is unable to connect to Redis.
+A /healthz endpoint is exposed on :8080/healthz which will fail if it is unable to connect to Redis.
 
 ## Example Issues
 ### GKE Release Notes

@@ -1,0 +1,10 @@
+interval: 300
+
+feeds:
+  - id: reddit
+    feed_url: https://www.reddit.com/.rss
+    name: Reddit Front Page
+    jira_project_id: CPTT
+    retroactive: false
+    labels:
+      - Reddit
