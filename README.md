@@ -59,7 +59,11 @@ A Docker image is made available on [DockerHub](https://hub.docker.com/r/adamhf/
 * JIRA_API_TOKEN - A Jira API token associated with the account specified in JIRA_USERNAME.  These can be generated from https://id.atlassian.com/manage/api-tokens
 * CONFIG_DIR - The directory the application should look for config.yaml in.
 * REDIS_URL - The URL of the Redis host e.g. `redis:6379`
+* REDIS_PRIMARY_ENDPOINT - The endpoint for the Redis Elasticache cluster if being used.
+**Note: One of REDIS_URL or REDIS_PRIMARY_ENDPOINT must be set **
 * REDIS_PASSWORD - Password for Redis, if an empty password is required set to `REDIS_PASSWORD=`
+* REDIS_AUTH_TOKEN - The auth token for the redis Elasticache cluster if being used.
+**Note: One of REDIS_PASSWORD or REDIS_PASSWORD must be set **
 * USE_SENTINEL - If set the REDIS_URL will be treated as a sentinel and the current master acquired via the sentinel.
 
 ### Run it
