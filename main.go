@@ -289,23 +289,36 @@ func readEnv() EnvValues {
 	} else {
 		configDir = envConfigDir
 	}
-	if envRedisURL := os.Getenv("REDIS_URL"); envRedisURL == "" {
-		panic("Could not find REDIS_URL specified as an environment variable")
-	} else {
-		redisURL = envRedisURL
-	}
 
 	envRedisPassword, hasRedisPasswordEnv := os.LookupEnv("REDIS_PASSWORD")
-	if !hasRedisPasswordEnv {
-		panic("Could not find REDIS_PASSWORD specified as an environment variable, it may be empty but it must exist")
+	envRedisAuthToken, hasRedisAuthTokenEnv := os.LookupEnv("REDIS_AUTH_TOKEN")
+	if !hasRedisPasswordEnv || !hasRedisAuthTokenEnv{
+		panic("Could not find REDIS_PASSWORD or REDIS_AUTH_TOKEN specified as an environment variable")
 	} else {
-		redisPassword = envRedisPassword
+	    if envRedisPassword != "" {
+	        redisPassword = envRedisPassword
+	    } else {
+	        log.Printf("Using Redis auth token in place of password")
+	        redisPassword = envRedisAuthToken
+	    }
 	}
 
 	_, hasRedisSentinel := os.LookupEnv("USE_SENTINEL")
 	if hasRedisSentinel {
 		log.Printf("Running in sentinel aware mode")
 		useSentinel = true
+	}
+
+	if envRedisURL := os.Getenv("REDIS_URL"); envRedisURL == "" {
+		redisEndpoint := os.Getenv("REDIS_PRIMARY_ENDPOINT")
+		if redisEndpoint == "" {
+			panic("Could not find REDIS_URL or REDIS_PRIMARY_ENDPOINT specified as an environment variable")
+		} else {
+		    log.Printf("Using Redis primary endpoint to build URL")
+			redisURL = fmt.Sprintf("rediss://:%s@%s/0", redisPassword, redisEndpoint)
+		}
+	} else {
+		redisURL = envRedisURL
 	}
 
 	return EnvValues{
