@@ -12,10 +12,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/go-redis/redis"
 	"github.com/mmcdole/gofeed"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/yaml.v2"
 	"jaytaylor.com/html2text"
 )
 
