@@ -12,12 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
 	"github.com/go-redis/redis"
 	"github.com/mmcdole/gofeed"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gopkg.in/yaml.v2"
 	"jaytaylor.com/html2text"
 )
 
@@ -292,15 +290,15 @@ func readEnv() EnvValues {
 
 	envRedisPassword, hasRedisPasswordEnv := os.LookupEnv("REDIS_PASSWORD")
 	envRedisAuthToken, hasRedisAuthTokenEnv := os.LookupEnv("REDIS_AUTH_TOKEN")
-	if !hasRedisPasswordEnv || !hasRedisAuthTokenEnv{
+	if !hasRedisPasswordEnv && !hasRedisAuthTokenEnv {
 		panic("Could not find REDIS_PASSWORD or REDIS_AUTH_TOKEN specified as an environment variable")
 	} else {
-	    if envRedisPassword != "" {
-	        redisPassword = envRedisPassword
-	    } else {
-	        log.Printf("Using Redis auth token in place of password")
-	        redisPassword = envRedisAuthToken
-	    }
+		if envRedisPassword != "" {
+			redisPassword = envRedisPassword
+		} else {
+			log.Printf("Using Redis auth token in place of password")
+			redisPassword = envRedisAuthToken
+		}
 	}
 
 	_, hasRedisSentinel := os.LookupEnv("USE_SENTINEL")
@@ -314,7 +312,7 @@ func readEnv() EnvValues {
 		if redisEndpoint == "" {
 			panic("Could not find REDIS_URL or REDIS_PRIMARY_ENDPOINT specified as an environment variable")
 		} else {
-		    log.Printf("Using Redis primary endpoint to build URL")
+			log.Printf("Using Redis primary endpoint to build URL")
 			redisURL = fmt.Sprintf("rediss://:%s@%s/0", redisPassword, redisEndpoint)
 		}
 	} else {
