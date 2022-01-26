@@ -306,15 +306,19 @@ func readEnv() EnvValues {
 		}
 	}
 
-	if envRedisURL := os.Getenv("REDIS_URL"); envRedisURL == "" {
-		if envRedisEndpoint := os.Getenv("REDIS_PRIMARY_ENDPOINT"); envRedisEndpoint == "" {
-			panic("Could not find REDIS_URL or REDIS_PRIMARY_ENDPOINT specified as an environment variable")
-		} else {
-			log.Printf("Using Redis primary endpoint as URL")
-			redisURL = fmt.Sprintf("%s:6379", envRedisEndpoint)
-		}
+	envRedisEndpoint := os.Getenv("REDIS_PRIMARY_ENDPOINT")
+	if envRedisEndpoint == "" {
+		panic("Could not find REDIS_PRIMARY_ENDPOINT environment variable")
 	} else {
-		redisURL = envRedisURL
+		log.Printf("Using Redis primary endpoint as URL")
+
+	}
+
+	envRedisPort, hasRedisPortEnv := os.LookupEnv("REDIS_PORT")
+	if hasRedisPortEnv {
+		redisURL = fmt.Sprintf("%s:%s", envRedisEndpoint, envRedisPort)
+	} else {
+		redisURL = fmt.Sprintf("%s:6379", envRedisEndpoint)
 	}
 
 	if envUseTLS := os.Getenv("REDIS_SSL"); envUseTLS == "1" {
