@@ -5,12 +5,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      - redis
     volumes:
       - ./config.yaml:/config/config.yaml
     command:
       - /app/wait-for-it.sh
-      - ${REDIS_URL}
+      - "${REDIS_PRIMARY_ENDPOINT}:${REDIS_PORT}"
       - --timeout=60
       - --strict
       - --
