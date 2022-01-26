@@ -64,6 +64,7 @@ A Docker image is made available on [DockerHub](https://hub.docker.com/r/adamhf/
 * REDIS_PASSWORD - Password for Redis, if an empty password is required set to `REDIS_PASSWORD=`
 * REDIS_AUTH_TOKEN - The auth token for the redis Elasticache cluster if being used.
 **Note: One of REDIS_PASSWORD or REDIS_AUTH_TOKEN must be set **
+* REDIS_SSL - Used as a feature toggle on whether to configure tls in the redis client. When set to 1, TLS config is enabled
 * USE_SENTINEL - If set the REDIS_URL will be treated as a sentinel and the current master acquired via the sentinel.
 
 ### Run it

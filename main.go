@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -50,6 +51,7 @@ type EnvValues struct {
 	JiraUsername  string
 	JiraURL       string
 	UseSentinel   bool
+	UseTLS        bool
 }
 
 func hasExistingJiraIssue(itemTitle string, projectKey string, jiraClient *jira.Client) bool {
@@ -221,11 +223,21 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 	config = readConfig(path.Join(env.ConfDir, "config.yaml"))
 
 	if !env.UseSentinel {
-		redisClient = redis.NewClient(&redis.Options{
-			Addr:     env.RedisURL,
-			Password: env.RedisPassword,
-			DB:       0, // use default DB
-		})
+		if env.UseTLS {
+			log.Printf("TLS config enabled")
+			redisClient = redis.NewClient(&redis.Options{
+				Addr:      env.RedisURL,
+				Password:  env.RedisPassword,
+				DB:        0, // use default DB,
+				TLSConfig: &tls.Config{},
+			})
+		} else {
+			redisClient = redis.NewClient(&redis.Options{
+				Addr:     env.RedisURL,
+				Password: env.RedisPassword,
+				DB:       0, // use default DB,
+			})
+		}
 	} else {
 		redisClient = redis.NewFailoverClient(&redis.FailoverOptions{
 			SentinelAddrs: []string{env.RedisURL},
@@ -236,7 +248,8 @@ func initialise(env EnvValues) (redisClient *redis.Client, jiraClient *jira.Clie
 	}
 
 	if err := redisClient.Ping().Err(); err != nil {
-		log.Panicf("Unable to connect to Redis @ %s", env.RedisURL)
+		log.Printf("Unable to connect to Redis @ %s", env.RedisURL)
+		log.Panicf(err.Error())
 	} else {
 		log.Printf("Connected to Redis @ %s", env.RedisURL)
 	}
@@ -310,15 +323,21 @@ func readEnv() EnvValues {
 	}
 
 	if envRedisURL := os.Getenv("REDIS_URL"); envRedisURL == "" {
-		redisEndpoint := os.Getenv("REDIS_PRIMARY_ENDPOINT")
-		if redisEndpoint == "" {
+		if envRedisEndpoint := os.Getenv("REDIS_PRIMARY_ENDPOINT"); envRedisEndpoint == "" {
 			panic("Could not find REDIS_URL or REDIS_PRIMARY_ENDPOINT specified as an environment variable")
 		} else {
-			log.Printf("Using Redis primary endpoint to build URL")
-			redisURL = fmt.Sprintf("rediss://:%s@%s/0", redisPassword, redisEndpoint)
+			log.Printf("Using Redis primary endpoint as URL")
+			redisURL = fmt.Sprintf("%s:6379", envRedisEndpoint)
 		}
 	} else {
 		redisURL = envRedisURL
+	}
+
+	useTLS := false
+	if envUseTLS := os.Getenv("REDIS_SSL"); envUseTLS == "1" {
+		useTLS = true
+	} else {
+		useTLS = false
 	}
 
 	return EnvValues{
@@ -329,6 +348,7 @@ func readEnv() EnvValues {
 		JiraUsername:  jiraUsername,
 		JiraURL:       jiraURL,
 		UseSentinel:   useSentinel,
+		UseTLS:        useTLS,
 	}
 }
 
